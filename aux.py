@@ -64,12 +64,14 @@ def rand_n_ones_in_vec_len_l(n, l):
 def rand_per_row_mat(n, shape):
     return np.stack([rand_n_ones_in_vec_len_l(n, shape[1]) for i in range(shape[0])])
 
-
 def mat_1_if_under_val(val, shape):
     return np.where(np.random.rand(*shape) < val, 1, 0)
 
 def gaussian_if_under_val(val, shape, mean, std):
     return np.where(np.random.rand(*shape) < val, np.random.normal(loc=mean, scale=std, size=shape), 0)
+
+def exp_if_under_val(val, shape, scale):
+    return np.where(np.random.rand(*shape) < val, np.random.exponential(scale=scale, size=shape), 0)
 
 def dropout_on_mat(mat, percent, min_idx=0, max_idx=None):
     if max_idx is None:
