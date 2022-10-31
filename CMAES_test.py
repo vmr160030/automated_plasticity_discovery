@@ -14,9 +14,9 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate_seq, tanh, generate_gaussian_pulse
 
-N_NETWORKS = 5
-POOL_SIZE = 5
-N_INNER_LOOP_ITERS = 50
+N_NETWORKS = 10
+POOL_SIZE = 8
+N_INNER_LOOP_ITERS = 200
 
 print(cma.CMAOptions('verb'))
 
