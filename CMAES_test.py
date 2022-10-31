@@ -14,9 +14,9 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate_seq, tanh, generate_gaussian_pulse
 
-N_NETWORKS = 10
-POOL_SIZE = 8
-N_INNER_LOOP_ITERS = 200
+N_NETWORKS = 5
+POOL_SIZE = 5
+N_INNER_LOOP_ITERS = 50
 
 print(cma.CMAOptions('verb'))
 
@@ -74,6 +74,8 @@ for i in range(n_e):
 	r_target[t_step_start:(t_step_start + n_t_steps), i] = np.sin(np.pi/period * dt * np.arange(n_t_steps))
 
 def l2_loss(r, r_target):
+	if np.isnan(r).any():
+		return 10000
 	return np.sum(np.square(r[:, :n_e] - r_target))
 
 eval_tracker = {
@@ -87,6 +89,8 @@ def simulate_single_network(w_initial, plasticity_coefs):
 	for i in range(N_INNER_LOOP_ITERS):
 		r, s, v, w_out = simulate_seq(t, n_e, n_i, r_in, transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=5e-3, tau_i=0.1e-3, g=1, w_u=1)
 		# dw_aggregate = np.sum(np.abs(w_out - w))
+		if np.isnan(r).any():
+			return r, w
 		w = w_out
 
 	return r, w
@@ -99,6 +103,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
 	results = pool.map(f, all_w_initial)
+	pool.close()
 
 	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + 100 * np.sum(np.abs(plasticity_coefs))
 
@@ -130,6 +135,8 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 		eval_tracker['best_loss'] = loss
 		eval_tracker['evals'] += 1
 
+		plt.close('all')
+
 	dur = time.time() - start
 	print('duration:', dur)
 	print('guess:', plasticity_coefs)
@@ -145,7 +152,6 @@ options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
-print(options)
 x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, 0.1, options=options)
 print(x)
 print(es.result_pretty())
