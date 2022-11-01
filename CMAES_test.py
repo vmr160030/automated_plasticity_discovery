@@ -73,7 +73,7 @@ for i in range(n_e):
 
 def l2_loss(r, r_target):
 	if np.isnan(r).any():
-		return 10000
+		return 100000
 	return np.sum(np.square(r[:, :n_e] - r_target))
 
 eval_tracker = {
