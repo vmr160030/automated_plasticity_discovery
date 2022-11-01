@@ -3,13 +3,13 @@
 ## Presets
 #SBATCH --job-name=plastic_cmaes
 
-#SBATCH -p compute
+#SBATCH -p compute-hugemem
 #SBATCH -A stf
 
 #SBATCH --nodes=1
 #SBATCH --time=24:00:00
-#SBATCH --ntasks=20
-#SBATCH --mem=50G
+#SBATCH --ntasks=11
+#SBATCH --mem=10G
 
 #SBATCH --chdir=.
 
