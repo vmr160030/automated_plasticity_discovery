@@ -103,7 +103,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, all_w_initial)
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + 100 * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + 1000 * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		scale = 1
@@ -150,6 +150,6 @@ options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
-x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, 0.1, options=options)
+x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, 0.0025, options=options)
 print(x)
 print(es.result_pretty())
