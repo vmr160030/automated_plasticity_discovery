@@ -1,3 +1,4 @@
 ./outcmaes/*
 ./sims_out/**/*
+./sims_out/**/*.png
 ./__pycache__/**/*
