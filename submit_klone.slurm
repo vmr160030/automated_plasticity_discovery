@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=plastic_cmaes
 
-#SBATCH -p compute-hugemem
-#SBATCH -A stf
+#SBATCH -p compute-bigmem
+#SBATCH -A labfairhall
 
 #SBATCH --nodes=1
 #SBATCH --time=72:00:00

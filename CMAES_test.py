@@ -15,8 +15,8 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-N_NETWORKS = 3
-POOL_SIZE = 3
+N_NETWORKS = 10
+POOL_SIZE = 10
 N_INNER_LOOP_ITERS = 100
 
 T = 0.1
@@ -33,18 +33,6 @@ os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
 layer_colors = get_ordered_colors('winter', 15)
-
-        # r_cross_products = np.stack([
-        # 	r_0_r_0,
-        # 	r_0_r_1,
-        # 	r_1_r_0,
-        # 	r_0_r_2,
-        # 	r_2_r_0,
-        # 	r_1_r_1,
-        # 	r_1_r_2,
-        # 	r_2_r_1,
-        # 	r_2_r_2,
-        # ])
 
 rule_names = [
 	r'',
