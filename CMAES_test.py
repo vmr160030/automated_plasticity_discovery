@@ -6,6 +6,7 @@ from functools import partial
 from disp import get_ordered_colors
 from aux import gaussian_if_under_val, exp_if_under_val
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
 
@@ -14,8 +15,8 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-N_NETWORKS = 10
-POOL_SIZE = 10
+N_NETWORKS = 3
+POOL_SIZE = 3
 N_INNER_LOOP_ITERS = 100
 
 T = 0.1
@@ -33,13 +34,76 @@ os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
 layer_colors = get_ordered_colors('winter', 15)
 
+        # r_cross_products = np.stack([
+        # 	r_0_r_0,
+        # 	r_0_r_1,
+        # 	r_1_r_0,
+        # 	r_0_r_2,
+        # 	r_2_r_0,
+        # 	r_1_r_1,
+        # 	r_1_r_2,
+        # 	r_2_r_1,
+        # 	r_2_r_2,
+        # ])
+
+rule_names = [
+	r'',
+	r'$y$',
+	r'$x$',
+	r'$y^2$',
+	r'$x^2$',
+	r'$x \, y$',
+	r'$x \, y^2$',
+	r'$x^2 \, y$',
+	r'$x^2 \, y^2$',
+	r'$y_{int}$',
+	r'$x \, y_{int}$',
+	r'$x_{int}$',
+	r'$x_{int} \, y$',
+
+	r'$w$',
+	r'$w \, y$',
+	r'$w \, x$',
+	r'$w \, y^2$',
+	r'$w \, x^2$',
+	r'$w \, x \, y$',
+	r'$w \, x \, y^2$',
+	r'$w \, x^2 \, y$',
+	r'$w \, x^2 \, y^2$',
+	r'$w y_{int}$',
+	r'$w x \, y_{int}$',
+	r'$w x_{int}$',
+	r'$w x_{int} \, y$',
+
+	r'$w^2$',
+	r'$w^2 \, y$',
+	r'$w^2 \, x$',
+	r'$w^2 \, y^2$',
+	r'$w^2 \, x^2$',
+	r'$w^2 \, x \, y$',
+	r'$w^2 \, x \, y^2$',
+	r'$w^2 \, x^2 \, y$',
+	r'$w^2 \, x^2 \, y^2$',
+	r'$w^2 y_{int}$',
+	r'$w^2 x \, y_{int}$',
+	r'$w^2 x_{int}$',
+	r'$w^2 x_{int} \, y$',
+]
+
+rule_names = [
+	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+]
+rule_names = np.array(rule_names).flatten()
+
 r_in = np.zeros((len(t), n_e + n_i))
-r_in[:, 0] = generate_gaussian_pulse(t, 0.005, 0.005, w=1)
+r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.012)
 
 transfer_e = partial(tanh, v_th=0.1)
 transfer_i = partial(tanh, v_th=0.1)
 
-plasticity_coefs = np.zeros(81)
+plasticity_coefs = np.zeros(117)
 
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
@@ -50,14 +114,13 @@ all_w_initial = []
 for i in range(N_NETWORKS):
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 	w_initial[:n_e, :n_e] = w_e_e * np.diag( 0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.1 + 0.9 *np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.3 + 0.7 * np.random.rand(n_e, n_e))
 
-	# np.where(
-	# 	np.diag(np.ones(n_e - 1), k=-1) > 0,
-	# 	gaussian_if_under_val(1.01, (n_e, n_e), w_e_e, 0 * w_e_e),
-	# 	0
-	# 	#exp_if_under_val(1.01, (n_e, n_e), 0.1 * w_e_e)
-	# )
+	w_initial[:n_e, :n_e] = np.where(
+		np.diag(np.ones(n_e - 1), k=-1) > 0,
+		w_initial[:n_e, :n_e],
+		exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
+	)
 
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(1.01, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(1.01, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
@@ -99,6 +162,62 @@ def simulate_single_network(w_initial, plasticity_coefs):
 
 	return r, w
 
+def plot_results(results, n_res_to_show, eval_tracker, out_dir, title, plasticity_coefs, best=False):
+	scale = 3
+	if best:
+		gs = gridspec.GridSpec(2 * n_res_to_show + 2, 2)
+		fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 2) * scale), tight_layout=True)
+		axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
+		axs += [fig.add_subplot(gs[2 * n_res_to_show, :])]
+		axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
+	else:
+		gs = gridspec.GridSpec(2 * n_res_to_show, 2)
+		fig = plt.figure(figsize=(4  * scale, n_res_to_show * scale), tight_layout=True)
+		axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
+
+	for i in range(n_res_to_show):
+		r, w = results[i]
+
+		for l_idx in range(r.shape[1]):
+			if l_idx < n_e:
+				if l_idx % 1 == 0:
+					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)])
+					axs[2 * i][0].plot(t, r_target[:, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)])
+			else:
+				axs[2 * i][1].plot(t, r[:, l_idx], c='black')
+
+		axs[2 * i + 1][0].matshow(all_w_initial[i])
+		axs[2 * i + 1][1].matshow(w)
+		axs[2 * i][0].set_title(title)
+
+	if best:
+		plasticity_coefs_abs = np.abs(plasticity_coefs)
+		plasticity_coefs_argsort = np.flip(np.argsort(plasticity_coefs_abs))
+		axs[2 * n_res_to_show + 1].bar(np.arange(len(plasticity_coefs)), (plasticity_coefs / np.sum(plasticity_coefs_abs))[plasticity_coefs_argsort])
+		axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
+		axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
+		axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
+
+		to_show = 10
+		plasticity_coefs_argsort = plasticity_coefs_argsort[:to_show]
+		axs[2 * n_res_to_show].bar(np.arange(to_show), (plasticity_coefs / np.sum(plasticity_coefs_abs))[plasticity_coefs_argsort])
+		axs[2 * n_res_to_show].set_xticks(np.arange(to_show))
+		axs[2 * n_res_to_show].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
+		axs[2 * n_res_to_show].set_xlim(-1, to_show)
+
+
+	pad = 4 - len(str(eval_tracker['evals']))
+	zero_padding = '0' * pad
+	evals = eval_tracker['evals']
+
+	fig.tight_layout()
+	if best:
+		fig.savefig(f'{out_dir}/{zero_padding}{evals} best.png')
+	else:
+		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+
+	plt.close('all')
+
 # Function to minimize (including simulation)
 
 def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
@@ -112,36 +231,13 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + 5 * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
-		scale = 1
-		fig, axs = plt.subplots(2, 2, sharex=False, sharey=False, figsize=(14 * scale, 6  * scale))
-
-		r, w = results[-1]
-
-		for l_idx in range(r.shape[1]):
-			if l_idx < n_e:
-				if l_idx % 1 == 0:
-					axs[0, 0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)])
-					axs[0, 0].plot(t, r_target[:, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)])
-			else:
-				axs[0, 1].plot(t, r[:, l_idx], c='black')
-
-		axs[1, 0].matshow(w_initial)
-		axs[1, 1].matshow(w)
-
-		axs[0, 0].set_title(f'Loss: {loss}')
-
-		pad = 4 - len(str(eval_tracker['evals']))
-		zero_padding = '0' * pad
-		evals = eval_tracker['evals']
-
-
-		fig.tight_layout()
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
-
-		eval_tracker['best_loss'] = loss
+		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
+			if eval_tracker['evals'] > 0:
+				eval_tracker['best_loss'] = loss
+			plot_results(results, N_NETWORKS, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
 		eval_tracker['evals'] += 1
-
-		plt.close('all')
+		# else:
+		# 	plot_results(results, 1, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs)
 
 	dur = time.time() - start
 	print('duration:', dur)
@@ -151,9 +247,9 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 
 	return loss
 
-simulate_plasticity_rules(np.zeros(81), eval_tracker=eval_tracker)
+simulate_plasticity_rules(np.zeros(117), eval_tracker=eval_tracker)
 
-x0 = np.zeros(81)
+x0 = np.zeros(117)
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }

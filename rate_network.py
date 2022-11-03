@@ -28,11 +28,12 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
 
 ### Simulate dynamics
 
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e, transfer_i, plasticity_coefs : np.ndarray, w : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_a=10e-3, dt=1e-6, g=1, w_u=1):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e, transfer_i, plasticity_coefs : np.ndarray, w : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_stdp=25e-3, dt=1e-6, g=1, w_u=1):    
     inh_activity = np.zeros((len(t)))
     r = np.zeros((len(t), n_e + n_i))
     s = np.zeros((len(t), n_e + n_i))
     v = np.zeros((len(t), n_e + n_i))
+    r_exp_filtered = np.zeros((len(t), n_e + n_i))
 
     w_copy = copy(w)
 
@@ -44,6 +45,8 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
 
         r[i+1, :n_e] = g * transfer_e(s[i, :n_e])
         r[i+1, n_e:] = g * transfer_i(s[i, n_e:])
+        
+        r_exp_filtered[i+1, :] = r_exp_filtered[i, :] * (1 - dt / tau_stdp)
 
         # find cross products
 
@@ -61,6 +64,10 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
         r_2_r_1 = r_1_r_2.T
         r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
+        r_0_r_exp = np.outer(r_0_pow, r_exp_filtered[i+1, :])
+        r_1_r_exp = np.outer(r_1_pow, r_exp_filtered[i+1, :])
+        r_exp_r_0 = r_0_r_exp.T
+        r_1_r_exp = r_1_r_exp.T
 
         r_cross_products = np.stack([
         	r_0_r_0,
@@ -72,13 +79,17 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
         	r_1_r_2,
         	r_2_r_1,
         	r_2_r_2,
+            r_0_r_exp,
+            r_1_r_exp,
+            r_exp_r_0,
+            r_1_r_exp,
         ])
 
        	w_updates_unweighted = np.concatenate([r_cross_products, w_copy * r_cross_products, np.square(w_copy) * r_cross_products])
        	
-        dw_e_e = np.sum(plasticity_coefs[:27].reshape(27, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
-        dw_e_i = np.sum(plasticity_coefs[27:54].reshape(27, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
-        dw_i_e = np.sum(plasticity_coefs[54:].reshape(27, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
+        dw_e_e = np.sum(plasticity_coefs[:39].reshape(39, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
+        dw_e_i = np.sum(plasticity_coefs[39:78].reshape(39, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
+        dw_i_e = np.sum(plasticity_coefs[78:].reshape(39, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
 
        	w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
         w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
