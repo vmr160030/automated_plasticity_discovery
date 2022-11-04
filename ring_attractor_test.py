@@ -231,11 +231,6 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 			plot_results(results, N_NETWORKS, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
 		eval_tracker['evals'] += 1
 
-		eval_tracker['best_loss'] = loss
-		eval_tracker['evals'] += 1
-
-		plt.close('all')
-
 	dur = time.time() - start
 	print('duration:', dur)
 	print('guess:', plasticity_coefs)
