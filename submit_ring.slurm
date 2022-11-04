@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=ring_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute-hugemem
+#SBATCH -A stf
 
 #SBATCH --nodes=1
 #SBATCH --time=72:00:00

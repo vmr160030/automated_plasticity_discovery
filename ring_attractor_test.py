@@ -17,9 +17,9 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 
 # Todo: simulate for number of different initializing pulses and a number of different perturbations of network.
 
-N_NETWORKS = 3
-POOL_SIZE = 3
-N_INNER_LOOP_ITERS = 5
+N_NETWORKS = 10
+POOL_SIZE = 10
+N_INNER_LOOP_ITERS = 100
 
 T = 0.1
 dt = 1e-4
