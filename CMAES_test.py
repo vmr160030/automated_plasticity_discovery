@@ -142,7 +142,7 @@ def simulate_single_network(w_initial, plasticity_coefs):
 	w = copy(w_initial)
 
 	for i in range(N_INNER_LOOP_ITERS):
-		r, s, v, w_out = simulate(t, n_e, n_i, r_in, transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
+		r, s, v, w_out = simulate(t, n_e, n_i, r_in + + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
 		# dw_aggregate = np.sum(np.abs(w_out - w))
 		if np.isnan(r).any():
 			return r, w
