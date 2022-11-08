@@ -16,10 +16,10 @@ from sklearn.decomposition import PCA
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
 N_NETWORKS = 300
-POOL_SIZE = 10
-BATCH_SIZE = 20
+POOL_SIZE = 3
+BATCH_SIZE = 3
 N_INNER_LOOP_ITERS = 100
-STD_EXPL = 0.001
+STD_EXPL = 0.005
 L1_PENALTY = 10
 
 T = 0.1
