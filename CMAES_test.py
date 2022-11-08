@@ -223,7 +223,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, [all_w_initial[k] for k in network_indices_to_train])
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
