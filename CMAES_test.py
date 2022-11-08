@@ -18,6 +18,8 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 N_NETWORKS = 10
 POOL_SIZE = 10
 N_INNER_LOOP_ITERS = 100
+STD_EXPL = 0.001
+L1_PENALTY = 10
 
 T = 0.1
 dt = 1e-4
@@ -146,6 +148,8 @@ def simulate_single_network(w_initial, plasticity_coefs):
 		# dw_aggregate = np.sum(np.abs(w_out - w))
 		if np.isnan(r).any():
 			return r, w
+		if (np.abs(w_out - w) <= (0.02 * np.abs(w))).all():
+			return r, w_out
 		w = w_out
 
 	return r, w
@@ -216,7 +220,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, all_w_initial)
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + 5 * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
@@ -242,6 +246,6 @@ options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
-x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, 0.01, options=options)
+x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, STD_EXPL, options=options)
 print(x)
 print(es.result_pretty())

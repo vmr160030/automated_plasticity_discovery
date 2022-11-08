@@ -15,11 +15,11 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-# Todo: simulate for number of different initializing pulses and a number of different perturbations of network.
-
 N_NETWORKS = 10
 POOL_SIZE = 10
 N_INNER_LOOP_ITERS = 100
+STD_EXPL = 0.001
+L1_PENALTY = 1
 
 T = 0.1
 dt = 1e-4
@@ -202,6 +202,8 @@ def simulate_single_network(args, plasticity_coefs):
 		r, s, v, w_out = simulate(t, n_e, n_i, r_in + + 2e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=0.5)
 		if np.isnan(r).any():
 			return r, w
+		if (np.abs(w_out - w) <= (0.02 * np.abs(w))).all():
+			return r, w_out
 		w = w_out
 
 	return r, w
@@ -222,7 +224,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, args)
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], all_r_target[input_indices_to_test.flatten()[k]]) for k, res in enumerate(results)]) + 0.25 * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l2_loss(res[0], all_r_target[input_indices_to_test.flatten()[k]]) for k, res in enumerate(results)]) + L1_PENALTY * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
@@ -246,6 +248,6 @@ options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
-x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, 0.01, options=options)
+x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, STD_EXPL, options=options)
 print(x)
 print(es.result_pretty())
