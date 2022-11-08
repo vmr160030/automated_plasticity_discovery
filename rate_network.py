@@ -39,6 +39,9 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
 
     tau = np.concatenate([tau_e * np.ones(n_e), tau_i * np.ones(n_i)])
 
+    n_params = len(plasticity_coefs)
+    one_third_n_params = int(n_params)
+
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T)
         s[i+1, :] = s[i, :] + (v[i+1, :] - s[i, :]) * dt / tau
@@ -67,33 +70,34 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
         r_0_r_exp = np.outer(r_0_pow, r_exp_filtered[i+1, :])
         r_1_r_exp = np.outer(r_1_pow, r_exp_filtered[i+1, :])
         r_exp_r_0 = r_0_r_exp.T
-        r_1_r_exp = r_1_r_exp.T
+        r_exp_r_1 = r_1_r_exp.T
 
         r_cross_products = np.stack([
         	r_0_r_0,
         	r_0_r_1,
-        	r_1_r_0,
+        	# r_1_r_0,
         	r_0_r_2,
-        	r_2_r_0,
+        	# r_2_r_0,
         	r_1_r_1,
         	r_1_r_2,
-        	r_2_r_1,
-        	r_2_r_2,
+        	# r_2_r_1,
+        	# r_2_r_2,
             r_0_r_exp,
-            r_1_r_exp,
+            # r_1_r_exp,
             r_exp_r_0,
-            r_1_r_exp,
+            r_exp_r_1,
         ])
 
-       	w_updates_unweighted = np.concatenate([r_cross_products, w_copy * r_cross_products, np.square(w_copy) * r_cross_products])
+       	w_updates_unweighted = np.concatenate([r_cross_products, w_copy * r_cross_products])
        	
-        dw_e_e = np.sum(plasticity_coefs[:39].reshape(39, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
-        dw_e_i = np.sum(plasticity_coefs[39:78].reshape(39, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
-        dw_i_e = np.sum(plasticity_coefs[78:].reshape(39, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
+
+        dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
+        # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
+        # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
 
        	w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
-        w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
-        w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
+        # w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
+        # w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
 
     return r, s, v, w_copy
 

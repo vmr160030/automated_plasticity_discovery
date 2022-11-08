@@ -15,8 +15,9 @@ from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
-N_NETWORKS = 10
+N_NETWORKS = 300
 POOL_SIZE = 10
+BATCH_SIZE = 20
 N_INNER_LOOP_ITERS = 100
 STD_EXPL = 0.001
 L1_PENALTY = 10
@@ -39,51 +40,51 @@ layer_colors = get_ordered_colors('winter', 15)
 rule_names = [
 	r'',
 	r'$y$',
-	r'$x$',
+	# r'$x$',
 	r'$y^2$',
-	r'$x^2$',
+	# r'$x^2$',
 	r'$x \, y$',
 	r'$x \, y^2$',
-	r'$x^2 \, y$',
-	r'$x^2 \, y^2$',
+	# r'$x^2 \, y$',
+	# r'$x^2 \, y^2$',
 	r'$y_{int}$',
-	r'$x \, y_{int}$',
+	# r'$x \, y_{int}$',
 	r'$x_{int}$',
 	r'$x_{int} \, y$',
 
 	r'$w$',
 	r'$w \, y$',
-	r'$w \, x$',
+	# r'$w \, x$',
 	r'$w \, y^2$',
-	r'$w \, x^2$',
+	# r'$w \, x^2$',
 	r'$w \, x \, y$',
 	r'$w \, x \, y^2$',
-	r'$w \, x^2 \, y$',
-	r'$w \, x^2 \, y^2$',
+	# r'$w \, x^2 \, y$',
+	# r'$w \, x^2 \, y^2$',
 	r'$w y_{int}$',
-	r'$w x \, y_{int}$',
+	# r'$w x \, y_{int}$',
 	r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 
-	r'$w^2$',
-	r'$w^2 \, y$',
-	r'$w^2 \, x$',
-	r'$w^2 \, y^2$',
-	r'$w^2 \, x^2$',
-	r'$w^2 \, x \, y$',
-	r'$w^2 \, x \, y^2$',
-	r'$w^2 \, x^2 \, y$',
-	r'$w^2 \, x^2 \, y^2$',
-	r'$w^2 y_{int}$',
-	r'$w^2 x \, y_{int}$',
-	r'$w^2 x_{int}$',
-	r'$w^2 x_{int} \, y$',
+	# r'$w^2$',
+	# r'$w^2 \, y$',
+	# r'$w^2 \, x$',
+	# r'$w^2 \, y^2$',
+	# r'$w^2 \, x^2$',
+	# r'$w^2 \, x \, y$',
+	# r'$w^2 \, x \, y^2$',
+	# r'$w^2 \, x^2 \, y$',
+	# r'$w^2 \, x^2 \, y^2$',
+	# r'$w^2 y_{int}$',
+	# r'$w^2 x \, y_{int}$',
+	# r'$w^2 x_{int}$',
+	# r'$w^2 x_{int} \, y$',
 ]
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -154,8 +155,9 @@ def simulate_single_network(w_initial, plasticity_coefs):
 
 	return r, w
 
-def plot_results(results, n_res_to_show, eval_tracker, out_dir, title, plasticity_coefs, best=False):
+def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title, plasticity_coefs, best=False):
 	scale = 3
+	n_res_to_show = len(network_indices_to_train)
 	if best:
 		gs = gridspec.GridSpec(2 * n_res_to_show + 2, 2)
 		fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 2) * scale), tight_layout=True)
@@ -167,7 +169,7 @@ def plot_results(results, n_res_to_show, eval_tracker, out_dir, title, plasticit
 		fig = plt.figure(figsize=(4  * scale, n_res_to_show * scale), tight_layout=True)
 		axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
 
-	for i in range(n_res_to_show):
+	for i, batch_idx in enumerate(network_indices_to_train):
 		r, w = results[i]
 
 		for l_idx in range(r.shape[1]):
@@ -178,7 +180,7 @@ def plot_results(results, n_res_to_show, eval_tracker, out_dir, title, plasticit
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black')
 
-		axs[2 * i + 1][0].matshow(all_w_initial[i])
+		axs[2 * i + 1][0].matshow(all_w_initial[batch_idx])
 		axs[2 * i + 1][1].matshow(w)
 		axs[2 * i][0].set_title(title)
 
@@ -217,7 +219,8 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
-	results = pool.map(f, all_w_initial)
+	network_indices_to_train = np.random.choice(np.arange(len(all_w_initial)), size=BATCH_SIZE, replace=False)
+	results = pool.map(f, [all_w_initial[k] for k in network_indices_to_train])
 	pool.close()
 
 	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * N_NETWORKS * np.sum(np.abs(plasticity_coefs))
@@ -226,10 +229,8 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-			plot_results(results, N_NETWORKS, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
+			plot_results(results, network_indices_to_train, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
 		eval_tracker['evals'] += 1
-		# else:
-		# 	plot_results(results, 1, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs)
 
 	dur = time.time() - start
 	print('duration:', dur)
@@ -239,13 +240,19 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 
 	return loss
 
-simulate_plasticity_rules(np.zeros(117), eval_tracker=eval_tracker)
+simulate_plasticity_rules(np.zeros(16), eval_tracker=eval_tracker)
 
-x0 = np.zeros(117)
+x0 = np.zeros(16)
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }
 
-x, es = cma.fmin2(partial(simulate_plasticity_rules, eval_tracker=eval_tracker), x0, STD_EXPL, options=options)
+x, es = cma.fmin2(
+	partial(simulate_plasticity_rules, eval_tracker=eval_tracker),
+	x0,
+	STD_EXPL,
+	restarts=10,
+	bipop=True,
+	options=options)
 print(x)
 print(es.result_pretty())
