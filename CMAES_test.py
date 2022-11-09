@@ -16,11 +16,11 @@ from sklearn.decomposition import PCA
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
 N_NETWORKS = 300
-POOL_SIZE = 3
-BATCH_SIZE = 3
-N_INNER_LOOP_ITERS = 100
-STD_EXPL = 0.005
-L1_PENALTY = 10
+POOL_SIZE = 10
+BATCH_SIZE = 10
+N_INNER_LOOP_ITERS = 250
+STD_EXPL = 0.2
+L1_PENALTY = 0
 
 T = 0.1
 dt = 1e-4
@@ -31,7 +31,7 @@ n_i = 20
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-out_dir = f'sims_out/{datetime.now()}'
+out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_{datetime.now()}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -94,8 +94,6 @@ r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.012)
 transfer_e = partial(tanh, v_th=0.1)
 transfer_i = partial(tanh, v_th=0.1)
 
-plasticity_coefs = np.zeros(117)
-
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
 w_i_e = -0.25e-4 / dt
@@ -131,10 +129,10 @@ for i in range(n_e):
 	t_step_start = int(active_range[0] / dt)
 	r_target[t_step_start:(t_step_start + n_t_steps), i] = 0.25 * np.sin(np.pi/period * dt * np.arange(n_t_steps))
 
-def l2_loss(r, r_target):
+def l1_loss(r, r_target):
 	if np.isnan(r).any():
 		return 100000
-	return np.sum(np.square(r[:, :n_e] - r_target))
+	return np.sum(np.abs(r[:, :n_e] - r_target))
 
 eval_tracker = {
 	'evals': 0,
@@ -149,8 +147,6 @@ def simulate_single_network(w_initial, plasticity_coefs):
 		# dw_aggregate = np.sum(np.abs(w_out - w))
 		if np.isnan(r).any():
 			return r, w
-		if (np.abs(w_out - w) <= (0.02 * np.abs(w))).all():
-			return r, w_out
 		w = w_out
 
 	return r, w
@@ -223,7 +219,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	results = pool.map(f, [all_w_initial[k] for k in network_indices_to_train])
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l1_loss(res[0], r_target) for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
@@ -240,9 +236,12 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 
 	return loss
 
-simulate_plasticity_rules(np.zeros(16), eval_tracker=eval_tracker)
-
 x0 = np.zeros(16)
+# x0[8] = 0.01
+# x0[10] = -4
+
+simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
+
 options = {
 	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
 }

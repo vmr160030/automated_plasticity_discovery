@@ -58,17 +58,17 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
         r_2_pow = np.square(r[i+1, :])
 
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
-        r_0_r_1 = np.outer(r_0_pow, r_1_pow)
+        r_0_r_1 = np.outer(r_1_pow, r_0_pow)
         r_1_r_0 = r_0_r_1.T
-        r_0_r_2 = np.outer(r_0_pow, r_2_pow)
+        r_0_r_2 = np.outer(r_2_pow, r_0_pow)
         r_2_r_0 = r_0_r_2.T
         r_1_r_1 = np.outer(r_1_pow, r_1_pow)
-        r_1_r_2 = np.outer(r_1_pow, r_2_pow)
+        r_1_r_2 = np.outer(r_2_pow, r_1_pow)
         r_2_r_1 = r_1_r_2.T
         r_2_r_2 = np.outer(r_2_pow, r_2_pow)
 
-        r_0_r_exp = np.outer(r_0_pow, r_exp_filtered[i+1, :]) / tau_stdp
-        r_1_r_exp = np.outer(r_1_pow, r_exp_filtered[i+1, :]) / tau_stdp
+        r_0_r_exp = np.outer(r_exp_filtered[i+1, :], r_0_pow) / tau_stdp
+        r_1_r_exp = np.outer(r_exp_filtered[i+1, :], r_1_pow) / tau_stdp
         r_exp_r_0 = r_0_r_exp.T
         r_exp_r_1 = r_1_r_exp.T
 
