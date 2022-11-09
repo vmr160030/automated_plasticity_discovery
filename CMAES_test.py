@@ -9,18 +9,28 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from datetime import datetime
 import multiprocessing as mp
-
+import argparse
 import cma
 from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--std_expl', metavar='std', type=float)
+parser.add_argument('--l1_pen', metavar='l1', type=float)
+parser.add_argument('--pool_size', metavar='ps', type=int)
+parser.add_argument('--batch', metavar='b', type=int)
+
+
+args = parser.parse_args()
+print(args)
+
 N_NETWORKS = 300
-POOL_SIZE = 10
-BATCH_SIZE = 10
+POOL_SIZE = args.pool_size
+BATCH_SIZE = args.batch
 N_INNER_LOOP_ITERS = 250
-STD_EXPL = 0.1
-L1_PENALTY = 0
+STD_EXPL = args.std_expl
+L1_PENALTY = args.l1_pen
 
 T = 0.1
 dt = 1e-4
@@ -31,7 +41,7 @@ n_i = 20
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_{datetime.now()}'
+out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{datetime.now()}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
