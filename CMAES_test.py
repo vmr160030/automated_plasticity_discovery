@@ -33,8 +33,8 @@ STD_EXPL = args.std_expl
 L1_PENALTY = args.l1_pen
 
 T = 0.1
+ROLLING_FRAC_INC = 0.1
 dt = 1e-4
-t = np.linspace(0, T, int(T / dt))
 n_e = 15
 n_i = 20
 
@@ -98,6 +98,7 @@ rule_names = [
 ]
 rule_names = np.array(rule_names).flatten()
 
+t = np.linspace(0, T, int(T / dt))
 r_in = np.zeros((len(t), n_e + n_i))
 r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.012)
 
@@ -139,28 +140,6 @@ for i in range(n_e):
 	t_step_start = int(active_range[0] / dt)
 	r_target[t_step_start:(t_step_start + n_t_steps), i] = 0.25 * np.sin(np.pi/period * dt * np.arange(n_t_steps))
 
-def l2_loss(r, r_target):
-	if np.isnan(r).any():
-		return 100000
-	return np.sum(np.square(r[:, :n_e] - r_target))
-
-eval_tracker = {
-	'evals': 0,
-	'best_loss': np.nan,
-}
-
-def simulate_single_network(w_initial, plasticity_coefs):
-	w = copy(w_initial)
-
-	for i in range(N_INNER_LOOP_ITERS):
-		r, s, v, w_out = simulate(t, n_e, n_i, r_in + + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
-		# dw_aggregate = np.sum(np.abs(w_out - w))
-		if np.isnan(r).any():
-			return r, w
-		w = w_out
-
-	return r, w
-
 def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title, plasticity_coefs, best=False):
 	scale = 3
 	n_res_to_show = len(network_indices_to_train)
@@ -182,7 +161,7 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 			if l_idx < n_e:
 				if l_idx % 1 == 0:
 					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)])
-					axs[2 * i][0].plot(t, r_target[:, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)])
+					axs[2 * i][0].plot(t, r_target[:r.shape[0], l_idx], '--', c=layer_colors[l_idx % len(layer_colors)])
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black')
 
@@ -211,31 +190,64 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 	evals = eval_tracker['evals']
 
 	fig.tight_layout()
+	rf_idx = eval_tracker['rf_idx']
 	if best:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals} best.png')
+		fig.savefig(f'{out_dir}/rf_idx_{rf_idx}_{zero_padding}{evals} best.png')
 	else:
-		fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
+		fig.savefig(f'{out_dir}/rf_idx_{rf_idx}_{zero_padding}{evals}.png')
 
 	plt.close('all')
 
+def l2_loss(r, r_target):
+	if np.isnan(r).any():
+		return 100000
+	return np.sum(np.square(r[:, :n_e] - r_target))
+
+def simulate_single_network(w_initial, t, plasticity_coefs):
+	w = copy(w_initial)
+
+	for i in range(N_INNER_LOOP_ITERS):
+		r, s, v, w_out = simulate(t, n_e, n_i, r_in[:len(t), :] + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
+		# dw_aggregate = np.sum(np.abs(w_out - w))
+		if np.isnan(r).any():
+			return r, w
+		w = w_out
+
+	return r, w
+
 # Function to minimize (including simulation)
 
-def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
+def sort_best_losses(best_losses):
+	order = np.argsort([best_losses[i]['loss'] for i in range(len(best_losses))])
+	return [best_losses[i] for i in order]
+
+def simulate_plasticity_rules(plasticity_coefs, t, eval_tracker=None, roll_frac=1):
 	start = time.time()
 
 	pool = mp.Pool(POOL_SIZE)
-	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
+	f = partial(simulate_single_network, t=t, plasticity_coefs=plasticity_coefs)
 	network_indices_to_train = np.random.choice(np.arange(len(all_w_initial)), size=BATCH_SIZE, replace=False)
 	results = pool.map(f, [all_w_initial[k] for k in network_indices_to_train])
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([l2_loss(res[0], r_target[:int(roll_frac * T/dt), :]) for res in results]) + roll_frac * L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
 			plot_results(results, network_indices_to_train, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
+
+		n_children = 3
+		if len(eval_tracker['n_best_losses']) < n_children or loss < eval_tracker['n_best_losses'][-1]['loss']:
+			if len(eval_tracker['n_best_losses']) == n_children:
+				eval_tracker['n_best_losses'].pop()
+			eval_tracker['n_best_losses'].append({
+				'loss': loss,
+				'x': copy(plasticity_coefs),
+			})
+			eval_tracker['n_best_losses'] = sort_best_losses(eval_tracker['n_best_losses'])
+				
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -247,21 +259,45 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	return loss
 
 x0 = np.zeros(16)
+
 # x0[8] = 0.01
 # x0[10] = -4
 
-simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
-
-options = {
-	'verb_filenameprefix': os.path.join(out_dir, 'outcmaes/'),
+eval_tracker = {
+	'evals': 0,
+	'best_loss': np.nan,
+	'n_best_losses': [],
+	'rf_idx': 1,
 }
 
-x, es = cma.fmin2(
-	partial(simulate_plasticity_rules, eval_tracker=eval_tracker),
-	x0,
-	STD_EXPL,
-	restarts=10,
-	bipop=True,
-	options=options)
-print(x)
-print(es.result_pretty())
+# simulate_plasticity_rules(x0, t, eval_tracker=eval_tracker)
+
+parameter_seeds = [x0]
+roll_fracs = np.arange(1, 11) * ROLLING_FRAC_INC
+
+print(roll_fracs)
+
+for rf_idx, rf in enumerate(roll_fracs):
+	t = np.linspace(0, rf * T, int(rf * T / dt))
+
+	eval_tracker = {
+		'evals': 0,
+		'best_loss': np.nan,
+		'n_best_losses': [],
+		'rf_idx': int(rf/ROLLING_FRAC_INC),
+	}
+
+	options = {
+		'verb_filenameprefix': os.path.join(out_dir, f'outcmaes_{rf_idx}/'),
+		'maxiter': 50,
+	}
+
+	for x in parameter_seeds:
+		x_best, es = cma.fmin2(
+			partial(simulate_plasticity_rules, t=t, eval_tracker=eval_tracker, roll_frac=rf),
+			x,
+			STD_EXPL,
+			bipop=True,
+			options=options)
+
+	parameter_seeds = [loss_inst['x'] for loss_inst in eval_tracker['n_best_losses']]
