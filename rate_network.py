@@ -29,11 +29,13 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
 ### Simulate dynamics
 
 def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e, transfer_i, plasticity_coefs : np.ndarray, w : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_stdp=25e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1.):    
-    inh_activity = np.zeros((len(t)))
-    r = np.zeros((len(t), n_e + n_i))
-    s = np.zeros((len(t), n_e + n_i))
-    v = np.zeros((len(t), n_e + n_i))
-    r_exp_filtered = np.zeros((len(t), n_e + n_i))
+    len_t = len(t)
+
+    inh_activity = np.zeros((len_t))
+    r = np.zeros((len_t, n_e + n_i))
+    s = np.zeros((len_t, n_e + n_i))
+    v = np.zeros((len_t, n_e + n_i))
+    r_exp_filtered = np.zeros((len_t, n_e + n_i))
 
     w_copy = copy(w)
 
@@ -49,13 +51,14 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
         r[i+1, :n_e] = g * transfer_e(s[i, :n_e])
         r[i+1, n_e:] = g * transfer_i(s[i, n_e:])
         
-        r_exp_filtered[i+1, :] = r_exp_filtered[i, :] * (1 - dt / tau_stdp)
+
+        r_exp_filtered[i+1, :] = r_exp_filtered[i, :] * (1 - dt / tau_stdp) + r[i, :] * (dt / tau_stdp)
 
         # find cross products
 
         r_0_pow = np.ones(n_e + n_i)
-        r_1_pow = r[i+1, :]
-        r_2_pow = np.square(r[i+1, :])
+        r_1_pow = r[i+1, :] / 0.1
+        r_2_pow = np.square(r[i+1, :]) / 0.01
 
         r_0_r_0 = np.outer(r_0_pow, r_0_pow)
         r_0_r_1 = np.outer(r_1_pow, r_0_pow)

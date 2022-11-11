@@ -144,11 +144,6 @@ def l2_loss(r, r_target):
 		return 100000
 	return np.sum(np.square(r[:, :n_e] - r_target))
 
-eval_tracker = {
-	'evals': 0,
-	'best_loss': np.nan,
-}
-
 def simulate_single_network(w_initial, plasticity_coefs):
 	w = copy(w_initial)
 
@@ -186,21 +181,24 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black')
 
-		axs[2 * i + 1][0].matshow(all_w_initial[batch_idx])
-		axs[2 * i + 1][1].matshow(w)
+		vmin = np.min([all_w_initial[batch_idx].min(), w.min()])
+		vmax = np.max([all_w_initial[batch_idx].max(), w.max()])
+
+		axs[2 * i + 1][0].matshow(all_w_initial[batch_idx], vmin=vmin, vmax=vmax)
+		axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax)
 		axs[2 * i][0].set_title(title)
 
 	if best:
 		plasticity_coefs_abs = np.abs(plasticity_coefs)
 		plasticity_coefs_argsort = np.flip(np.argsort(plasticity_coefs_abs))
-		axs[2 * n_res_to_show + 1].bar(np.arange(len(plasticity_coefs)), (plasticity_coefs / np.sum(plasticity_coefs_abs))[plasticity_coefs_argsort])
+		axs[2 * n_res_to_show + 1].bar(np.arange(len(plasticity_coefs)), plasticity_coefs[plasticity_coefs_argsort])
 		axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
 		axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 		axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
 
 		to_show = 10
 		plasticity_coefs_argsort = plasticity_coefs_argsort[:to_show]
-		axs[2 * n_res_to_show].bar(np.arange(to_show), (plasticity_coefs / np.sum(plasticity_coefs_abs))[plasticity_coefs_argsort])
+		axs[2 * n_res_to_show].bar(np.arange(to_show), plasticity_coefs[plasticity_coefs_argsort])
 		axs[2 * n_res_to_show].set_xticks(np.arange(to_show))
 		axs[2 * n_res_to_show].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 		axs[2 * n_res_to_show].set_xlim(-1, to_show)
@@ -247,8 +245,23 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	return loss
 
 x0 = np.zeros(16)
-# x0[8] = 0.01
-# x0[10] = -4
+
+# for i in np.arange(0, x0.shape[0]):
+# 	eval_tracker = {
+# 		'evals': i,
+# 		'best_loss': np.nan,
+# 	}
+# 	x = copy(x0)
+# 	x[i] = 0.01
+# 	simulate_plasticity_rules(x, eval_tracker=eval_tracker)
+	# x = copy(x0)
+	# x[i] = 1e-4
+	# simulate_plasticity_rules(x, eval_tracker=eval_tracker)
+
+eval_tracker = {
+	'evals': 0,
+	'best_loss': np.nan,
+}
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
@@ -263,5 +276,6 @@ x, es = cma.fmin2(
 	restarts=10,
 	bipop=True,
 	options=options)
+
 print(x)
 print(es.result_pretty())

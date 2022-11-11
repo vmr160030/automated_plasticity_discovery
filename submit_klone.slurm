@@ -22,14 +22,14 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python CMAES_test.py --std_expl 0.25 --l1_pen 0.1 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.10 --l1_pen 0.1 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.025 --l1_pen 50 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.050 --l1_pen 50 --pool_size 10 --batch 10
 
-python CMAES_test.py --std_expl 0.25 --l1_pen 1.0 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.10 --l1_pen 1.0 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.025 --l1_pen 100 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.050 --l1_pen 100 --pool_size 10 --batch 10
 
-python CMAES_test.py --std_expl 0.25 --l1_pen 10 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.10 --l1_pen 10 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.025 --l1_pen 1000 --pool_size 10 --batch 10
+python CMAES_test.py --std_expl 0.050 --l1_pen 1000 --pool_size 10 --batch 10
 
 deactivate
 
