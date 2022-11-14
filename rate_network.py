@@ -42,7 +42,7 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
     tau = np.concatenate([tau_e * np.ones(n_e), tau_i * np.ones(n_i)])
 
     n_params = len(plasticity_coefs)
-    one_third_n_params = int(n_params)
+    one_third_n_params = int(n_params / 3)
 
     for i in range(0, len(t) - 1):
         v[i+1, :] = w_u * inp[i, :] + np.dot(w_copy, r[i, :].T)
@@ -95,12 +95,12 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
        	
 
         dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
-        # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
-        # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
+        dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
+        dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
 
        	w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
-        # w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
-        # w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
+        w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
+        w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
 
     return r, s, v, w_copy
 

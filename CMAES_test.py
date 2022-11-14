@@ -95,8 +95,8 @@ rule_names = [
 
 rule_names = [
 	[r'$E \rightarrow E$ ' + r_name for r_name in rule_names],
-	# [r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
-	# [r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
+	[r'$E \rightarrow I$ ' + r_name for r_name in rule_names],
+	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
 
@@ -246,26 +246,8 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 
 	return loss
 
-x0 = np.zeros(16)
+x0 = np.zeros(48)
 
-# x1 = np.array([
-# 	0.018,
-# 	-0.0391,
-# 	0.0033,
-# 	0.015,
-# 	-0.0055,
-# 	-0.007,
-# 	-0.011,
-# 	-0.0017,
-# 	0.0039,
-# 	-0.002,
-# 	-0.011,
-# 	-0.006,
-# 	-0.0072,
-# 	-0.013,
-# 	0.004,
-# 	0.028,
-# ])
 
 # def set_smallest_n_zero(arr, n):
 # 	arr_copy = copy(arr)
@@ -276,31 +258,11 @@ x0 = np.zeros(16)
 # 			arr_copy[i] = 0
 # 	return arr_copy
 
-# for i in np.arange(0, x0.shape[0]):
-# 	eval_tracker = {
-# 		'evals': i,
-# 		'best_loss': np.nan,
-# 	}
-# 	x = copy(x0)
-# 	x[i] = 0.01
-# 	simulate_plasticity_rules(x, eval_tracker=eval_tracker)
-	# x = copy(x0)
-	# x[i] = 1e-4
-	# simulate_plasticity_rules(x, eval_tracker=eval_tracker)
 
 eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 }
-
-# for i in range(x1.shape[0]):
-# 	x = copy(x1)
-# 	x[i] = 0
-
-# x1[2] = 0
-# x1[7] = 0
-# x1[9] = 0
-# x1[11] = 0
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
