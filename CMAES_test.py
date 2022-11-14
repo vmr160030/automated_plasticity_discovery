@@ -41,7 +41,9 @@ n_i = 20
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{datetime.now()}'
+
+time_stamp = str(datetime.now()).replace(' ', '_')
+out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -233,7 +235,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-			plot_results(results, network_indices_to_train, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
+		plot_results(results, network_indices_to_train, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -245,6 +247,34 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	return loss
 
 x0 = np.zeros(16)
+
+# x1 = np.array([
+# 	0.018,
+# 	-0.0391,
+# 	0.0033,
+# 	0.015,
+# 	-0.0055,
+# 	-0.007,
+# 	-0.011,
+# 	-0.0017,
+# 	0.0039,
+# 	-0.002,
+# 	-0.011,
+# 	-0.006,
+# 	-0.0072,
+# 	-0.013,
+# 	0.004,
+# 	0.028,
+# ])
+
+# def set_smallest_n_zero(arr, n):
+# 	arr_copy = copy(arr)
+# 	sort_indices = np.argsort(np.abs(arr))
+# 	print(sort_indices)
+# 	for i, sort_i in enumerate(sort_indices):
+# 		if sort_i >= (len(arr) - n):
+# 			arr_copy[i] = 0
+# 	return arr_copy
 
 # for i in np.arange(0, x0.shape[0]):
 # 	eval_tracker = {
@@ -262,6 +292,15 @@ eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 }
+
+# for i in range(x1.shape[0]):
+# 	x = copy(x1)
+# 	x[i] = 0
+
+# x1[2] = 0
+# x1[7] = 0
+# x1[9] = 0
+# x1[11] = 0
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
