@@ -16,10 +16,10 @@ from sklearn.decomposition import PCA
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--std_expl', metavar='std', type=float)
-parser.add_argument('--l1_pen', metavar='l1', type=float)
-parser.add_argument('--pool_size', metavar='ps', type=int)
-parser.add_argument('--batch', metavar='b', type=int)
+parser.add_argument('--std_expl', metavar='std', type=float, default=0.1)
+parser.add_argument('--l1_pen', metavar='l1', type=float, default=0)
+parser.add_argument('--pool_size', metavar='ps', type=int, default=10)
+parser.add_argument('--batch', metavar='b', type=int, default=10)
 
 
 args = parser.parse_args()
