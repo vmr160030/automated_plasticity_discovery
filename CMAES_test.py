@@ -153,7 +153,7 @@ def simulate_single_network(index, plasticity_coefs):
 		r, s, v, w_out = simulate(t, n_e, n_i, r_in + + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
 		# dw_aggregate = np.sum(np.abs(w_out - w))
 		if np.isnan(r).any():
-			return r, w
+			return r, w, w_initial
 		w = w_out
 
 	return r, w, w_initial
@@ -222,6 +222,9 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, best=F
 
 def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	start = time.time()
+
+	for i in range(BATCH_SIZE):
+		np.random.rand()
 
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
