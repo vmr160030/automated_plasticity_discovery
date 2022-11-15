@@ -25,7 +25,6 @@ parser.add_argument('--batch', metavar='b', type=int, default=10)
 args = parser.parse_args()
 print(args)
 
-N_NETWORKS = 300
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
 N_INNER_LOOP_ITERS = 250
@@ -41,7 +40,9 @@ n_i = 20
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{datetime.now()}'
+
+time_stamp = str(datetime.now()).replace(' ', '_')
+out_dir = f'sims_out/seq_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -108,24 +109,6 @@ w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
 w_i_e = -0.25e-4 / dt
 
-all_w_initial = []
-
-for i in range(N_NETWORKS):
-	w_initial = np.zeros((n_e + n_i, n_e + n_i))
-	w_initial[:n_e, :n_e] = w_e_e * np.diag( 0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.3 + 0.7 * np.random.rand(n_e, n_e))
-
-	w_initial[:n_e, :n_e] = np.where(
-		np.diag(np.ones(n_e - 1), k=-1) > 0,
-		w_initial[:n_e, :n_e],
-		exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
-	)
-
-	w_initial[n_e:, :n_e] = gaussian_if_under_val(1.01, (n_i, n_e), w_e_i, 0.3 * w_e_i)
-	w_initial[:n_e, n_e:] = gaussian_if_under_val(1.01, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
-
-	all_w_initial.append(w_initial)
-
 # Defining L2 loss and objective function
 
 r_target = np.zeros((len(t), n_e))
@@ -144,21 +127,40 @@ def l2_loss(r, r_target):
 		return 100000
 	return np.sum(np.square(r[:, :n_e] - r_target))
 
-def simulate_single_network(w_initial, plasticity_coefs):
+def make_network():
+	w_initial = np.zeros((n_e + n_i, n_e + n_i))
+	w_initial[:n_e, :n_e] = w_e_e * np.diag( 0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
+	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.3 + 0.7 * np.random.rand(n_e, n_e))
+
+	w_initial[:n_e, :n_e] = np.where(
+		np.diag(np.ones(n_e - 1), k=-1) > 0,
+		w_initial[:n_e, :n_e],
+		exp_if_under_val(0.5, (n_e, n_e), 0.03 * w_e_e)
+	)
+
+	w_initial[n_e:, :n_e] = gaussian_if_under_val(1.01, (n_i, n_e), w_e_i, 0.3 * w_e_i)
+	w_initial[:n_e, n_e:] = gaussian_if_under_val(1.01, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+
+	return w_initial
+
+def simulate_single_network(index, plasticity_coefs):
+	for i in range(index):
+		np.random.rand()
+	w_initial = make_network()
 	w = copy(w_initial)
 
 	for i in range(N_INNER_LOOP_ITERS):
 		r, s, v, w_out = simulate(t, n_e, n_i, r_in + + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1)
 		# dw_aggregate = np.sum(np.abs(w_out - w))
 		if np.isnan(r).any():
-			return r, w
+			return r, w, w_initial
 		w = w_out
 
-	return r, w
+	return r, w, w_initial
 
-def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title, plasticity_coefs, best=False):
+def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs, best=False):
 	scale = 3
-	n_res_to_show = len(network_indices_to_train)
+	n_res_to_show = BATCH_SIZE
 	if best:
 		gs = gridspec.GridSpec(2 * n_res_to_show + 2, 2)
 		fig = plt.figure(figsize=(4  * scale, (2 * n_res_to_show + 2) * scale), tight_layout=True)
@@ -170,8 +172,8 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 		fig = plt.figure(figsize=(4  * scale, n_res_to_show * scale), tight_layout=True)
 		axs = [[fig.add_subplot(gs[i, 0]), fig.add_subplot(gs[i, 1])] for i in range(2 * n_res_to_show)]
 
-	for i, batch_idx in enumerate(network_indices_to_train):
-		r, w = results[i]
+	for i in np.arange(BATCH_SIZE):
+		r, w, w_initial = results[i]
 
 		for l_idx in range(r.shape[1]):
 			if l_idx < n_e:
@@ -181,10 +183,10 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black')
 
-		vmin = np.min([all_w_initial[batch_idx].min(), w.min()])
-		vmax = np.max([all_w_initial[batch_idx].max(), w.max()])
+		vmin = np.min([w_initial.min(), w.min()])
+		vmax = np.max([w_initial.max(), w.max()])
 
-		axs[2 * i + 1][0].matshow(all_w_initial[batch_idx], vmin=vmin, vmax=vmax)
+		axs[2 * i + 1][0].matshow(w_initial, vmin=vmin, vmax=vmax)
 		axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax)
 		axs[2 * i][0].set_title(title)
 
@@ -221,10 +223,12 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	start = time.time()
 
+	for i in range(BATCH_SIZE):
+		np.random.rand()
+
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
-	network_indices_to_train = np.random.choice(np.arange(len(all_w_initial)), size=BATCH_SIZE, replace=False)
-	results = pool.map(f, [all_w_initial[k] for k in network_indices_to_train])
+	results = pool.map(f, np.arange(BATCH_SIZE))
 	pool.close()
 
 	loss = np.sum([l2_loss(res[0], r_target) for res in results]) + L1_PENALTY * BATCH_SIZE * np.sum(np.abs(plasticity_coefs))
@@ -233,7 +237,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-			plot_results(results, network_indices_to_train, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
+		plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs, best=True)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
@@ -245,6 +249,34 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	return loss
 
 x0 = np.zeros(16)
+
+# x1 = np.array([
+# 	0.018,
+# 	-0.0391,
+# 	0.0033,
+# 	0.015,
+# 	-0.0055,
+# 	-0.007,
+# 	-0.011,
+# 	-0.0017,
+# 	0.0039,
+# 	-0.002,
+# 	-0.011,
+# 	-0.006,
+# 	-0.0072,
+# 	-0.013,
+# 	0.004,
+# 	0.028,
+# ])
+
+# def set_smallest_n_zero(arr, n):
+# 	arr_copy = copy(arr)
+# 	sort_indices = np.argsort(np.abs(arr))
+# 	print(sort_indices)
+# 	for i, sort_i in enumerate(sort_indices):
+# 		if sort_i >= (len(arr) - n):
+# 			arr_copy[i] = 0
+# 	return arr_copy
 
 # for i in np.arange(0, x0.shape[0]):
 # 	eval_tracker = {
@@ -262,6 +294,15 @@ eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 }
+
+# for i in range(x1.shape[0]):
+# 	x = copy(x1)
+# 	x[i] = 0
+
+# x1[2] = 0
+# x1[7] = 0
+# x1[9] = 0
+# x1[11] = 0
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 
