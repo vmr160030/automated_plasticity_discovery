@@ -67,7 +67,18 @@ def rand_per_row_mat(n, shape):
 def mat_1_if_under_val(val, shape):
     return np.where(np.random.rand(*shape) < val, 1, 0)
 
-def gaussian_if_under_val(val, shape, mean, std):
+def gaussian_if_under_val(val: float, shape: tuple, mean: float, std: float)->np.ndarray:
+    """Get gaussian draws in matrix of given shape
+
+    Args:
+        val (float): Proportion of non-zero values
+        shape (tuple): (int, int)
+        mean (float): mean of gaussian
+        std (float): std dev of gaussian
+
+    Returns:
+        np.ndarray: matrix of gaussian draws
+    """
     return np.where(np.random.rand(*shape) < val, np.random.normal(loc=mean, scale=std, size=shape), 0)
 
 def exp_if_under_val(val, shape, scale):
