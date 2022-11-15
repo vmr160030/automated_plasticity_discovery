@@ -189,6 +189,9 @@ def plot_results(results, network_indices_to_train, eval_tracker, out_dir, title
 		axs[2 * i + 1][0].matshow(all_w_initial[batch_idx], vmin=vmin, vmax=vmax)
 		axs[2 * i + 1][1].matshow(w, vmin=vmin, vmax=vmax)
 		axs[2 * i][0].set_title(title)
+		for i_axs in range(2):
+			axs[2 * i][i_axs].set_xlabel('Time (s)')
+			axs[2 * i][i_axs].set_ylabel('Firing rate')
 
 	if best:
 		plasticity_coefs_abs = np.abs(plasticity_coefs)
