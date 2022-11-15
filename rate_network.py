@@ -3,7 +3,18 @@ from copy import deepcopy as copy
 
 ### For initiating activity
 
-def generate_gaussian_pulse(t, u, s, w=1):
+def generate_gaussian_pulse(t: np.ndarray, u: float, s: float, w: float=1.)->np.ndarray:
+    """_summary_
+
+    Args:
+        t (np.ndarray): array of time values, typically [0, T] in dt increments
+        u (float): time at peak of gaussian
+        s (float): time std dev of gaussian
+        w (float, optional): amplitude of gaussian. Defaults to 1.
+
+    Returns:
+        np.ndarray: array of shape(t) with gaussian pulse
+    """
     return w / (np.sqrt(2 * np.pi) * s) * np.exp(-0.5 * np.square((t-u) / s))
 
 ### Related to activation functions
@@ -12,12 +23,30 @@ def shift(x : np.ndarray):
     shifted = np.concatenate([[0], copy(x[:-1])])
     return shifted
 
-def threshold_linear(s : np.ndarray, v_th : float):
+def threshold_linear(s : np.ndarray, v_th : float) -> np.ndarray:
+    """Shift and threshold s by v_th
+
+    Args:
+        s (np.ndarray): _description_
+        v_th (float): threshold value
+
+    Returns:
+        np.ndarray: shifted_s
+    """
     shifted_s = s - v_th
     shifted_s[shifted_s < 0] = 0
     return shifted_s
 
-def tanh(s : np.ndarray, v_th : float):
+def tanh(s : np.ndarray, v_th : float) -> np.ndarray:
+    """Transfer function tanh applied to thresholded values
+
+    Args:
+        s (np.ndarray): _description_
+        v_th (float): threshold value
+
+    Returns:
+        np.ndarray: tanh(shifted_s)
+    """
     return np.tanh(threshold_linear(s, v_th))
 
 def sigmoid(s : np.ndarray, v_th : float, spread : float):
@@ -91,14 +120,14 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
             r_exp_r_1,
         ])
 
-       	w_updates_unweighted = np.concatenate([r_cross_products, w_copy / w_scale_factor * r_cross_products])
+        w_updates_unweighted = np.concatenate([r_cross_products, w_copy / w_scale_factor * r_cross_products])
        	
 
         dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0)
         # dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0)
         # dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0)
 
-       	w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
+        w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
         # w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
         # w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
 
