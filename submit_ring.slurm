@@ -22,7 +22,7 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python ring_attractor_test.py
+python train_ring.py
 
 deactivate
 

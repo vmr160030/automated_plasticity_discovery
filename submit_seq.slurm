@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Presets
-#SBATCH --job-name=plastic_cmaes
+#SBATCH --job-name=seq_cmaes
 
 #SBATCH -p compute-bigmem
 #SBATCH -A labfairhall
@@ -22,10 +22,10 @@ cd /mmfs1/gscratch/labfairhall/davidgbe
 source davidgbe-env/bin/activate
 cd $CURRDIR
 
-python CMAES_test.py --std_expl 0.050 --l1_pen 10 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.050 --l1_pen 50 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.050 --l1_pen 100 --pool_size 10 --batch 10
-python CMAES_test.py --std_expl 0.050 --l1_pen 200 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.050 --l1_pen 10 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.050 --l1_pen 50 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.050 --l1_pen 100 --pool_size 10 --batch 10
+python train_sequence.py --std_expl 0.050 --l1_pen 200 --pool_size 10 --batch 10
 
 deactivate
 
