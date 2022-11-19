@@ -142,6 +142,8 @@ def make_network():
 
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
+	
+	np.fill_diagonal(w_initial, 0)
 
 	return w_initial
 
