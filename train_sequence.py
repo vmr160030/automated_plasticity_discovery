@@ -200,14 +200,11 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
 	axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
 
-	# plot the 10 larget coefficients applied to plasticity rules
-	to_show = 10
-	plasticity_coefs_argsort = plasticity_coefs_argsort[:to_show]
-	axs[2 * n_res_to_show].bar(np.arange(to_show), plasticity_coefs[plasticity_coefs_argsort])
-	axs[2 * n_res_to_show].set_xticks(np.arange(to_show))
-	axs[2 * n_res_to_show].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
-	axs[2 * n_res_to_show].set_xlim(-1, to_show)
-
+	# plot the coefficients assigned to each plasticity rule (unsorted by size)
+	axs[2 * n_res_to_show].bar(np.arange(len(plasticity_coefs)), plasticity_coefs)
+	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
+	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
+	axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
@@ -264,7 +261,6 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	return loss
 
 x0 = np.zeros(48)
-
 
 # def set_smallest_n_zero(arr, n):
 # 	arr_copy = copy(arr)
