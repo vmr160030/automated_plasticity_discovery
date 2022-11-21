@@ -186,9 +186,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 
 def simulate_single_network(args, plasticity_coefs):
 	index, r_in = args[0], args[1]
-
-	for i in range(index):
-		np.random.rand()
+	np.random.seed()
 
 	w_initial = make_network()
 
@@ -215,7 +213,6 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	args = []
 	for i in range(BATCH_SIZE):
 		for j in range(INPUT_NUM_PER_NTWK):
-			np.random.rand()
 			index = i * INPUT_NUM_PER_NTWK + j
 			args.append((index, all_r_in[input_indices_to_test[i, j]]))
 	results = pool.map(f, args)

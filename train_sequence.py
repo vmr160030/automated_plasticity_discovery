@@ -142,7 +142,7 @@ def make_network():
 
 	w_initial[n_e:, :n_e] = gaussian_if_under_val(0.8, (n_i, n_e), w_e_i, 0.3 * w_e_i)
 	w_initial[:n_e, n_e:] = gaussian_if_under_val(0.8, (n_e, n_i), w_i_e, 0.3 * np.abs(w_i_e))
-	
+
 	np.fill_diagonal(w_initial, 0)
 
 	return w_initial
@@ -221,8 +221,7 @@ def simulate_single_network(index, plasticity_coefs):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
-	for k in range(index):
-		np.random.rand()
+	np.random.seed()
 
 	w_initial = make_network() # make a new, distorted sequence
 	w = copy(w_initial)
@@ -241,9 +240,6 @@ def simulate_single_network(index, plasticity_coefs):
 
 def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	start = time.time()
-
-	for k in range(BATCH_SIZE):
-		np.random.rand()
 
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)

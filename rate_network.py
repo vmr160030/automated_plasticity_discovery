@@ -98,12 +98,12 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, transfer_e,
        	
         # dot updates due to all rules with coefficients for these rules and compute total weight updates. Do not update non-plastic weights.
         dw_e_e = np.sum(plasticity_coefs[:one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, :n_e], axis=0) * w_plastic[:n_e, :n_e]
-        dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:]
-        dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:, :n_e]
+        dw_e_i = np.sum(plasticity_coefs[one_third_n_params:2*one_third_n_params].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, n_e:, :n_e], axis=0) * w_plastic[n_e:, :n_e]
+        dw_i_e = np.sum(plasticity_coefs[2 * one_third_n_params:].reshape(one_third_n_params, 1, 1) * w_updates_unweighted[:, :n_e, n_e:], axis=0) * w_plastic[:n_e, n_e:]
 
        	w_copy[:n_e, :n_e] += 0.0005 * dw_e_e
-        w_copy[:n_e, n_e:] += 0.0005 * dw_e_i
-        w_copy[n_e:, :n_e] += 0.0005 * dw_i_e
+        w_copy[n_e:, :n_e] += 0.0005 * dw_e_i
+        w_copy[:n_e, n_e:] += 0.0005 * dw_i_e
 
         # if sign of weight is flipped by update, set it to an infinitesimal amount with its initial polarity
         polarity_flip = sign_w * w_copy
