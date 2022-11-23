@@ -26,8 +26,8 @@ print(args)
 
 POOL_SIZE = args.pool_size
 BATCH_SIZE = args.batch
-INPUT_NUM_PER_NTWK = 3
-N_INNER_LOOP_ITERS = 100 # Number of times to simulate network and plasticity rules per loss function evaluation
+INPUT_NUM_PER_NTWK = 1
+N_INNER_LOOP_RANGE = (150, 300) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 L1_PENALTY = args.l1_pen
 
@@ -40,7 +40,9 @@ n_i = 20
 if not os.path.exists('sims_out'):
 	os.mkdir('sims_out')
 
-out_dir = f'sims_out/{datetime.now()}'
+# Make subdirectory for this particular experiment
+time_stamp = str(datetime.now()).replace(' ', '_')
+out_dir = f'sims_out/ring_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -102,15 +104,11 @@ transfer_i = partial(tanh, v_th=0.1)
 
 w_e_e = 0.2e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.25e-4 / dt
+w_i_e = -0.4e-4 / dt
 
 r_in_e_0 = np.zeros((len(t), n_e))
-
-r_in_e_0[:, -1] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.01 * 0.5)
-r_in_e_0[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.01)
-r_in_e_0[:, 1] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.01 * 0.5)
-
-r_target_0 = np.stack([[0.15149132, 0.11786643, 0.02162234, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.02162234, 0.11786643] for k in range(10)])
+r_target_0 = np.stack([[0.15149132, 0.11786643, 0.02162234, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.02162234, 0.11786643] for k in range(100)])
+r_in_e_0[:100, :] = copy(r_target_0)
 
 all_r_in = []
 all_r_target = []
@@ -135,7 +133,7 @@ def make_network():
 
 def l2_loss(r, r_target):
 	if np.isnan(r).any():
-		return 100000
+		return 1e8
 	return np.sum(np.square(r[(-1 * r_target.shape[0]):, :n_e] - r_target))
 
 def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
@@ -149,7 +147,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 	axs += [fig.add_subplot(gs[2 * n_res_to_show + 1, :])]
 
 	for i in range(n_res_to_show):
-		r, w, w_initial = results[i]
+		r, w, w_initial, loss = results[i]
 
 		axs[2 * i][0].imshow(r[:, :n_e].T, aspect='auto', interpolation='none')
 
@@ -161,19 +159,24 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 		axs[2 * i + 1][1].matshow(w)
 		axs[2 * i][0].set_title(title)
 
-	plasticity_coefs_abs = np.abs(plasticity_coefs)
-	plasticity_coefs_argsort = np.flip(np.argsort(plasticity_coefs_abs))
-	axs[2 * n_res_to_show + 1].bar(np.arange(len(plasticity_coefs)), plasticity_coefs[plasticity_coefs_argsort])
-	axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(plasticity_coefs)))
-	axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
-	axs[2 * n_res_to_show + 1].set_xlim(-1, len(plasticity_coefs))
+	partial_rules_len = int(len(plasticity_coefs) / 3)
 
-	to_show = 10
-	plasticity_coefs_argsort = plasticity_coefs_argsort[:to_show]
-	axs[2 * n_res_to_show].bar(np.arange(to_show), plasticity_coefs[plasticity_coefs_argsort])
-	axs[2 * n_res_to_show].set_xticks(np.arange(to_show))
-	axs[2 * n_res_to_show].set_xticklabels(rule_names[plasticity_coefs_argsort], rotation=60, ha='right')
-	axs[2 * n_res_to_show].set_xlim(-1, to_show)
+	# axs[2 * n_res_to_show + 1].set_xticks(np.arange(len(effects)))
+	# effects_argsort = []
+	# for l in range(3):
+	# 	effects_partial = effects[l * partial_rules_len: (l+1) * partial_rules_len]
+	# 	effects_argsort_partial = np.flip(np.argsort(effects_partial))
+	# 	effects_argsort.append(effects_argsort_partial + l * partial_rules_len)
+	# 	axs[2 * n_res_to_show + 1].bar(np.arange(len(effects_argsort_partial)) + l * 16, effects_partial[effects_argsort_partial] / np.max(np.abs(effects_partial)))
+	# axs[2 * n_res_to_show + 1].set_xticklabels(rule_names[np.concatenate(effects_argsort)], rotation=60, ha='right')
+	# axs[2 * n_res_to_show + 1].set_xlim(-1, len(effects))
+
+	# plot the coefficients assigned to each plasticity rule (unsorted by size)
+	for l in range(3):
+		axs[2 * n_res_to_show].bar(np.arange(partial_rules_len) + l * partial_rules_len, plasticity_coefs[l * partial_rules_len: (l+1) * partial_rules_len])
+	axs[2 * n_res_to_show].set_xticks(np.arange(len(plasticity_coefs)))
+	axs[2 * n_res_to_show].set_xticklabels(rule_names, rotation=60, ha='right')
+	axs[2 * n_res_to_show].set_xlim(-1, len(plasticity_coefs))
 
 
 	pad = 4 - len(str(eval_tracker['evals']))
@@ -184,22 +187,32 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 	fig.savefig(f'{out_dir}/{zero_padding}{evals}.png')
 	plt.close('all')
 
-def simulate_single_network(args, plasticity_coefs):
-	index, r_in = args[0], args[1]
+def simulate_single_network(args, plasticity_coefs, gamma=0.98):
+	index = args[0]
 	np.random.seed()
 
 	w_initial = make_network()
+	n_inner_loop_iters = np.random.randint(N_INNER_LOOP_RANGE[0], N_INNER_LOOP_RANGE[1])
 
 	w = copy(w_initial)
 	w_plastic = np.where(w != 0, 1, 0).astype(int) # define non-zero weights as mutable under the plasticity rules
 
-	for i in range(N_INNER_LOOP_ITERS):
-		r, s, v, w_out = simulate(t, n_e, n_i, r_in + 2e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=0.5)
+	cumulative_loss = 0
+
+	for i in range(n_inner_loop_iters):
+		r_in_idx = np.random.randint(0, len(all_r_in))
+		r_in = all_r_in[r_in_idx]
+
+		r, s, v, w_out, effects = simulate(t, n_e, n_i, r_in + 2e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1.5)
+		
+		loss = l2_loss(r, all_r_target[r_in_idx])
+		cumulative_loss = cumulative_loss * gamma + loss
+
 		if np.isnan(r).any():
-			return r, w, w_initial
+			break
 		w = w_out
 
-	return r, w, w_initial
+	return r, w, w_initial, cumulative_loss / (1 / np.log(1/gamma))
 
 # Function to minimize (including simulation)
 
@@ -211,14 +224,12 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 	pool = mp.Pool(POOL_SIZE)
 	f = partial(simulate_single_network, plasticity_coefs=plasticity_coefs)
 	args = []
-	for i in range(BATCH_SIZE):
-		for j in range(INPUT_NUM_PER_NTWK):
-			index = i * INPUT_NUM_PER_NTWK + j
-			args.append((index, all_r_in[input_indices_to_test[i, j]]))
+	for i in range(BATCH_SIZE * INPUT_NUM_PER_NTWK):
+		args.append((i,))
 	results = pool.map(f, args)
 	pool.close()
 
-	loss = np.sum([l2_loss(res[0], all_r_target[input_indices_to_test.flatten()[k]]) for k, res in enumerate(results)]) + L1_PENALTY * BATCH_SIZE * INPUT_NUM_PER_NTWK * np.sum(np.abs(plasticity_coefs))
+	loss = np.sum([res[3] for k, res in enumerate(results)]) + L1_PENALTY * BATCH_SIZE * INPUT_NUM_PER_NTWK * np.sum(np.abs(plasticity_coefs))
 
 	if eval_tracker is not None:
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
