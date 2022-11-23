@@ -275,7 +275,7 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None):
 		if np.isnan(eval_tracker['best_loss']) or loss < eval_tracker['best_loss']:
 			if eval_tracker['evals'] > 0:
 				eval_tracker['best_loss'] = loss
-		plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs)
+			plot_results(results, eval_tracker, out_dir, f'Loss: {loss}\n', plasticity_coefs)
 		eval_tracker['evals'] += 1
 
 	dur = time.time() - start
