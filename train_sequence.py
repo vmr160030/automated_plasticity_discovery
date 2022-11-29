@@ -20,6 +20,7 @@ from rate_network import simulate, tanh, generate_gaussian_pulse
 parser = argparse.ArgumentParser()
 parser.add_argument('--std_expl', metavar='std', type=float, help='Initial standard deviation for parameter search via CMA-ES')
 parser.add_argument('--l1_pen', metavar='l1', type=float, help='Prefactor for L1 penalty on loss function')
+parser.add_argument('--dw_pen', metavar='dwp', type=float, help='Penalty for fraction of plasticity-induced weight change that occurs late in simulation')
 parser.add_argument('--pool_size', metavar='ps', type=int, help='Number of processes to start for each loss function evaluation')
 parser.add_argument('--batch', metavar='b', type=int, help='Number of simulations that should be batched per loss function evaluation')
 
@@ -31,6 +32,8 @@ BATCH_SIZE = args.batch
 N_INNER_LOOP_RANGE = (190, 200) # Number of times to simulate network and plasticity rules per loss function evaluation
 STD_EXPL = args.std_expl
 L1_PENALTY = args.l1_pen
+DW_PENALTY = args.dw_pen
+DW_LAG = 5
 
 T = 0.1 # Total duration of one network simulation
 dt = 1e-4 # Timestep
@@ -131,8 +134,8 @@ def make_network():
 
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
-	w_initial[:n_e, :n_e] = w_e_e * np.diag( 0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.1 + 0.9  * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = w_e_e * np.diag(0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
+	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.2 + 0.8  * np.random.rand(n_e, n_e))
 
 	w_initial[:n_e, :n_e] = np.where(
 		np.diag(np.ones(n_e - 1), k=-1) > 0,
@@ -196,7 +199,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 			axs[2 * i][i_axs].set_xlabel('Time (s)')
 			axs[2 * i][i_axs].set_ylabel('Firing rate')
 
-		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas))
+		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
 	print('effects:')
 	print(all_effects)
@@ -231,6 +234,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 
 	axs[2 * n_res_to_show + 2].set_xlabel('Epochs')
 	axs[2 * n_res_to_show + 2].set_ylabel('log(delta W)')
+	axs[2 * n_res_to_show + 2].legend()
 
 	pad = 4 - len(str(eval_tracker['evals']))
 	zero_padding = '0' * pad
@@ -246,7 +250,7 @@ def weight_change_penalty(weight_deltas, s=30):
 	a = (1 - b) / (b * (1 - np.power(b, n))) # this normalizes total weight change penalty to 1
 	return a * np.power(b, np.arange(1, n + 1))
 
-def simulate_single_network(index, plasticity_coefs, gamma=0.98, dw_lag=5, dw_penalty_coef=2.5, track_params=False):
+def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=False):
 	'''
 	Simulate one set of plasticity rules. `index` describes the simulation's position in the current batch and is used to randomize the random seed.
 	'''
@@ -280,7 +284,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, dw_lag=5, dw_pe
 		all_weight_deltas.append(np.sum(np.abs(w_out - w_hist[0])))
 
 		w_hist.append(w_out)
-		if len(w_hist) > dw_lag:
+		if len(w_hist) > DW_LAG:
 			w_hist.pop(0)
 
 		if effects is not None:
@@ -288,9 +292,10 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, dw_lag=5, dw_pe
 
 		w = w_out # use output weights evolved under plasticity rules to begin the next simulation
 
-	penalty_wc = dw_penalty_coef * np.dot(weight_change_penalty(all_weight_deltas), all_weight_deltas)
 
-	print('penalty_wc:', penalty_wc)
+	penalty_wc = DW_PENALTY / np.sum(all_weight_deltas) * np.dot(weight_change_penalty(all_weight_deltas), all_weight_deltas)
+
+	print(f'penalty_wc {index}:', penalty_wc)
 
 	normed_loss = cumulative_loss / (1 / np.log(1/gamma)) + penalty_wc
 
@@ -332,6 +337,8 @@ eval_tracker = {
 
 # x1 = str('-0.037734288820665436 -0.03011735209391469 -0.018173897036771875 0.03600648076171382 0.0019114866230664235 -0.05101598199784114 0.05896772937739326 0.05547212166030329 -0.02005802902652238 -0.02474866467251842 -0.01993604835992464 -0.034195429167007636 -0.04357875335317038 0.029534815609442443 0.04297850591742626 0.03508071471093647 0.01003288104415306 -0.015620211977487523 -0.03952208297239813 0.1104667187122368 0.02349686679274084 0.02411736376057691 0.034196874600540536 -0.014620788855925155 -0.04259783311340164 -0.03054606723461701 -0.023801372010937166 -0.07402352486400733 -0.05601334479094237 -0.02299363314607309 -0.02515251162699948 0.0015077839488898126 0.10783878933203547 -0.017914736864477344 0.024163036320314784 -0.06828155308142446 0.0011158678601269328 -0.07878881973302962 -0.06321771995274984 0.015011653114717138 -0.15655131899845917 0.04758066510878306 0.04608984375891524 0.08273776999253006 0.1060621707873952 -0.023336389307702796 0.08877043115911275 -0.04379972387400109').split(' ')
 # x1 = np.array([float(n) for n in x1])
+
+# x1[8] = 0.005
 
 # effect_sizes = np.array([5.27751763e+05, 6.18235136e+04, 5.21351071e+04, 1.34717956e+04,
 #  1.05863156e+03, 3.63087241e+05, 4.24716499e+05, 7.99887936e+04,
