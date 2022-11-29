@@ -3,8 +3,8 @@
 ## Presets
 #SBATCH --job-name=seq_cmaes
 
-#SBATCH -p compute-bigmem
-#SBATCH -A labfairhall
+#SBATCH -p compute
+#SBATCH -A stf
 
 #SBATCH --nodes=1
 #SBATCH --time=72:00:00
@@ -24,7 +24,6 @@ cd $CURRDIR
 
 python train_sequence.py --std_expl 0.025 --l1_pen 1 --pool_size 10 --batch 10
 python train_sequence.py --std_expl 0.025 --l1_pen 10 --pool_size 10 --batch 10
-python train_sequence.py --std_expl 0.025 --l1_pen 50 --pool_size 10 --batch 10
 
 deactivate
 
