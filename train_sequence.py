@@ -46,7 +46,7 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_ei_test_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
+out_dir = f'sims_out/seq_ei_jit_accel_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -102,10 +102,6 @@ rule_names = [
 	[r'$I \rightarrow E$ ' + r_name for r_name in rule_names],
 ]
 rule_names = np.array(rule_names).flatten()
-
-# Define input for activation of the network
-r_in = np.zeros((len(t), n_e + n_i))
-r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.012) # Drive first excitatory cell with Gaussian input
 
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
@@ -265,6 +261,11 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 	w_hist.append(w)
 
 	for i in range(n_inner_loop_iters):
+		# Define input for activation of the network
+		r_in = np.zeros((len(t), n_e + n_i))
+		input_amp = np.random.rand() * 0.002 + 0.01
+		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
+
 		# below, simulate one activation of the network for the period T
 		r, s, v, w_out, effects = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
