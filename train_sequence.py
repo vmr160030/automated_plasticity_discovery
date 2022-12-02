@@ -46,7 +46,7 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_ei_jit_accel_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_{time_stamp}'
+out_dir = f'sims_out/seq_ei_jit_accel_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -288,6 +288,9 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 
 	penalty_wc = DW_PENALTY / np.sum(all_weight_deltas) * np.dot(weight_change_penalty(all_weight_deltas), all_weight_deltas)
+
+	if np.isnan(penalty_wc):
+		penalty_wc = 0
 
 	print(f'penalty_wc {index}:', penalty_wc)
 
