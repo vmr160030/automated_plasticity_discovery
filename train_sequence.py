@@ -131,7 +131,7 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 	w_initial[:n_e, :n_e] = w_e_e * np.diag(0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.2 + 0.8  * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.2 + 1.5  * np.random.rand(n_e, n_e))
 
 	w_initial[:n_e, :n_e] = np.where(
 		np.diag(np.ones(n_e - 1), k=-1) > 0,
