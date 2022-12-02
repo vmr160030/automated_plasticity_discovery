@@ -11,7 +11,6 @@ from datetime import datetime
 import multiprocessing as mp
 import argparse
 import cma
-from sklearn.decomposition import PCA
 
 from rate_network import simulate, tanh, generate_gaussian_pulse
 
@@ -108,12 +107,9 @@ rule_names = np.array(rule_names).flatten()
 r_in = np.zeros((len(t), n_e + n_i))
 r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=0.012) # Drive first excitatory cell with Gaussian input
 
-transfer_e = partial(tanh, v_th=0.1)
-transfer_i = partial(tanh, v_th=0.1)
-
 w_e_e = 0.8e-3 / dt
 w_e_i = 0.5e-4 / dt
-w_i_e = -0.25e-4 / dt
+w_i_e = -0.3e-4 / dt
 
 # Define r_target, the target dynamics for the network to produce. 
 
@@ -201,9 +197,6 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 
 		axs[2 * n_res_to_show + 2].plot(np.arange(len(all_weight_deltas)), np.log(all_weight_deltas), label=f'{i}')
 
-	print('effects:')
-	print(all_effects)
-
 	### plot the coefficients assigned to each plasticity rule
 	# plasticity_coefs_abs = np.abs(plasticity_coefs)
 	# plasticity_coefs_argsort = np.flip(np.argsort(plasticity_coefs_abs))
@@ -273,7 +266,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 	for i in range(n_inner_loop_iters):
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), transfer_e, transfer_i, plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		loss = l2_loss(r, r_target)
 		cumulative_loss = cumulative_loss * gamma + loss
