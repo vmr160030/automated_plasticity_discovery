@@ -46,7 +46,7 @@ if not os.path.exists('sims_out'):
 
 # Make subdirectory for this particular experiment
 time_stamp = str(datetime.now()).replace(' ', '_')
-out_dir = f'sims_out/seq_ei_jit_accel_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
+out_dir = f'sims_out/seq_ei_jitac_2_STD_EXPL_{STD_EXPL}_L1_PENALTY_{L1_PENALTY}_DW_PENALTY_{DW_PENALTY}_{time_stamp}'
 os.mkdir(out_dir)
 os.mkdir(os.path.join(out_dir, 'outcmaes'))
 
@@ -55,30 +55,30 @@ layer_colors = get_ordered_colors('winter', 15)
 rule_names = [ # Define labels for all rules to be run during simulations
 	r'',
 	r'$y$',
-	# r'$x$',
+	r'$x$',
 	r'$y^2$',
 	# r'$x^2$',
 	r'$x \, y$',
 	r'$x \, y^2$',
 	# r'$x^2 \, y$',
 	# r'$x^2 \, y^2$',
-	r'$y_{int}$',
+	# r'$y_{int}$',
 	# r'$x \, y_{int}$',
-	r'$x_{int}$',
+	# r'$x_{int}$',
 	r'$x_{int} \, y$',
 
 	r'$w$',
 	r'$w \, y$',
-	# r'$w \, x$',
+	r'$w \, x$',
 	r'$w \, y^2$',
 	# r'$w \, x^2$',
 	r'$w \, x \, y$',
 	r'$w \, x \, y^2$',
 	# r'$w \, x^2 \, y$',
 	# r'$w \, x^2 \, y^2$',
-	r'$w y_{int}$',
+	# r'$w y_{int}$',
 	# r'$w x \, y_{int}$',
-	r'$w x_{int}$',
+	# r'$w x_{int}$',
 	r'$w x_{int} \, y$',
 
 	# r'$w^2$',
@@ -127,7 +127,7 @@ def make_network():
 	'''
 	w_initial = np.zeros((n_e + n_i, n_e + n_i))
 	w_initial[:n_e, :n_e] = w_e_e * np.diag(0.8 * np.log10(np.arange(n_e - 1) + 10), k=-1)
-	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.2 + 1.5  * np.random.rand(n_e, n_e))
+	w_initial[:n_e, :n_e] = w_initial[:n_e, :n_e] * (0.3 + 1.4  * np.random.rand(n_e, n_e))
 
 	w_initial[:n_e, :n_e] = np.where(
 		np.diag(np.ones(n_e - 1), k=-1) > 0,
@@ -165,7 +165,7 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 
 	for i in np.arange(BATCH_SIZE):
 		# for each network in the batch, graph its excitatory, inhibitory activity, as well as the target activity
-		r, w, w_initial, normed_loss, effects, all_weight_deltas = results[i]
+		r, w, w_initial, normed_loss, effects, all_weight_deltas, r_exp_filtered = results[i]
 
 		all_effects.append(effects)
 
@@ -174,6 +174,8 @@ def plot_results(results, eval_tracker, out_dir, title, plasticity_coefs):
 				if l_idx % 1 == 0:
 					axs[2 * i][0].plot(t, r[:, l_idx], c=layer_colors[l_idx % len(layer_colors)]) # graph excitatory neuron activity
 					axs[2 * i][0].plot(t, r_target[:, l_idx], '--', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
+
+					# axs[2 * i][0].plot(t, 4 * r_exp_filtered[:, l_idx], '-.', c=layer_colors[l_idx % len(layer_colors)]) # graph target activity
 			else:
 				axs[2 * i][1].plot(t, r[:, l_idx], c='black') # graph inh activity
 
@@ -267,7 +269,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 		r_in[:, 0] = generate_gaussian_pulse(t, 5e-3, 5e-3, w=input_amp) # Drive first excitatory cell with Gaussian input
 
 		# below, simulate one activation of the network for the period T
-		r, s, v, w_out, effects = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
+		r, s, v, w_out, effects, r_exp_filtered = simulate(t, n_e, n_i, r_in + 4e-6 / dt * np.random.rand(len(t), n_e + n_i), plasticity_coefs, w, w_plastic, dt=dt, tau_e=10e-3, tau_i=0.1e-3, g=1, w_u=1, track_params=track_params)
 
 		loss = l2_loss(r, r_target)
 		cumulative_loss = cumulative_loss * gamma + loss
@@ -296,7 +298,7 @@ def simulate_single_network(index, plasticity_coefs, gamma=0.98, track_params=Fa
 
 	normed_loss = cumulative_loss / (1 / np.log(1/gamma)) + penalty_wc
 
-	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas
+	return r, w, w_initial, normed_loss, all_effects, all_weight_deltas, r_exp_filtered
 
 # Function to minimize (including simulation)
 
@@ -325,17 +327,15 @@ def simulate_plasticity_rules(plasticity_coefs, eval_tracker=None, track_params=
 
 	return loss
 
-x0 = np.zeros(48)
+x0 = np.zeros(42)
 
 eval_tracker = {
 	'evals': 0,
 	'best_loss': np.nan,
 }
 
-# x1 = str('-0.037734288820665436 -0.03011735209391469 -0.018173897036771875 0.03600648076171382 0.0019114866230664235 -0.05101598199784114 0.05896772937739326 0.05547212166030329 -0.02005802902652238 -0.02474866467251842 -0.01993604835992464 -0.034195429167007636 -0.04357875335317038 0.029534815609442443 0.04297850591742626 0.03508071471093647 0.01003288104415306 -0.015620211977487523 -0.03952208297239813 0.1104667187122368 0.02349686679274084 0.02411736376057691 0.034196874600540536 -0.014620788855925155 -0.04259783311340164 -0.03054606723461701 -0.023801372010937166 -0.07402352486400733 -0.05601334479094237 -0.02299363314607309 -0.02515251162699948 0.0015077839488898126 0.10783878933203547 -0.017914736864477344 0.024163036320314784 -0.06828155308142446 0.0011158678601269328 -0.07878881973302962 -0.06321771995274984 0.015011653114717138 -0.15655131899845917 0.04758066510878306 0.04608984375891524 0.08273776999253006 0.1060621707873952 -0.023336389307702796 0.08877043115911275 -0.04379972387400109').split(' ')
+# x1 = str('-0.042675534574574 0.045667863538663554 -0.0032566369453279915 -0.021760623829948554 -0.0316262366696267 0.008487938383185479 0.01525657974915425 -0.040748715544448526 0.003668857752011703 0.0017639736570192075 -0.1261775365134765 0.0005719669605593644 -0.09928902724686574 0.04177783269087883 0.03922795281258521 0.04692560258128908 0.14005369346007215 0.029061393343938525 0.026756916540571142 0.09112069169181806 0.014988751547553733 -0.006162983250250737 -0.06923320669856024 -0.11124603376422622 -0.055497344482981006 0.07991472509490581 -0.061254014490439754 0.024867039757639983 -0.03524855229124467 -0.0854257454335782 -0.025670356196084237 0.02368938869812294 0.08349483533849754 0.08591215870912053 -0.04885635580697583 -0.010377378071371193 -0.048681314105448056 -0.09184509860992232 -0.011944454149853852 -0.05579997946941964 -0.07881160137662353 0.09846128014074103 0.010440697875208927 0.005767655640333167 0.012307184510331429 0.06522394933997167 -0.004980934109576987 0.07030881881006139').split(' ')
 # x1 = np.array([float(n) for n in x1])
-
-# x1[8] = 0.005
 
 # effect_sizes = np.array([5.27751763e+05, 6.18235136e+04, 5.21351071e+04, 1.34717956e+04,
 #  1.05863156e+03, 3.63087241e+05, 4.24716499e+05, 7.99887936e+04,
@@ -350,20 +350,19 @@ eval_tracker = {
 #  8.67751299e+05, 3.82004006e+04, 5.59146540e+04, 4.17414558e+04,
 #  9.47268052e+04, 7.05007186e+04, 5.89641175e+05, 4.11536245e+04,])
 
-# num_to_silence = [13, 14, 15]
+# num_to_silence = [0, 16, 16]
 # for j in range(3):
 # 	st = 16 * j
 # 	en = 16 * (j + 1)
-# 	effects_partial = effect_sizes[st:en]
-# 	set_smallest_n_zero(effects_partial, num_to_silence[j], arr_set=x1[st:en])
+# 	set_smallest_n_zero(x1[st:en], num_to_silence[j], arr_set=x1[st:en])
 
 # x1 = copy(x0)
 # x1[0] = 1e-2
 
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
-# simulate_plasticity_rules(x1, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
+# simulate_plasticity_rules(x0, eval_tracker=eval_tracker, track_params=True)
 
 simulate_plasticity_rules(x0, eval_tracker=eval_tracker)
 

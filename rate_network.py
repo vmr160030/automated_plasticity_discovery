@@ -28,7 +28,7 @@ def threshold_power(s : np.ndarray, v_th : float, p : float):
     return np.power(threshold_linear(s, v_th), p)
 
 ### Simulate dynamics
-def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_stdp=25e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1., track_params=False):    
+def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_coefs : np.ndarray, w : np.ndarray, w_plastic : np.ndarray, tau_e=5e-3, tau_i=5e-3, tau_stdp=5e-3, dt=1e-6, g=1, w_u=1, w_scale_factor=1., track_params=False):    
     len_t = len(t)
 
     inh_activity = np.zeros((len_t))
@@ -44,12 +44,12 @@ def simulate(t : np.ndarray, n_e : int, n_i : int, inp : np.ndarray, plasticity_
 
     n_params = len(plasticity_coefs)
 
-    w_copy, effects_e_e, effects_, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, w, w_plastic, tau_stdp, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
+    w_copy, effects_e_e, effects_e_i, effects_i_e = simulate_inner_loop(t, n_e, n_i, inp, plasticity_coefs, w, w_plastic, tau_stdp, dt, g, w_u, w_scale_factor, track_params, len_t, inh_activity, r, s, v, r_exp_filtered, sign_w, inf_w, tau, n_params)
 
     if track_params:
-        return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e])
+        return r, s, v, w_copy, np.concatenate([effects_e_e, effects_e_i, effects_i_e]), r_exp_filtered
     else:
-        return r, s, v, w_copy, None
+        return r, s, v, w_copy, None, r_exp_filtered
 
 @njit
 def simulate_inner_loop(
@@ -123,16 +123,16 @@ def simulate_inner_loop(
         r_cross_products = np.stack((
             r_0_r_0,
             r_0_r_1,
-            # r_1_r_0,
+            r_1_r_0,
             r_0_r_2,
             # r_2_r_0,
             r_1_r_1,
             r_1_r_2,
             # r_2_r_1,
             # r_2_r_2,
-            r_0_r_exp,
+            # r_0_r_exp,
             # r_1_r_exp,
-            r_exp_r_0,
+            # r_exp_r_0,
             r_exp_r_1,
         ))
 
